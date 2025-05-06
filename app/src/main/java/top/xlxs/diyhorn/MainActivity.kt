@@ -10,7 +10,9 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
+import android.provider.Settings
 import android.util.Log
+import android.view.KeyEvent
 import android.view.View
 import android.widget.EditText
 import android.widget.TextView
@@ -20,6 +22,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import androidx.room.Room
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -35,19 +38,40 @@ class MainActivity : AppCompatActivity() {
     private lateinit var buttonConfigs: MutableList<ButtonConfig>
     private lateinit var db: AppDatabase
     private val TAG = "MainActivity"
+    private lateinit var indexInput: EditText // 新增输入框引用
 
     var dlDir: String = ""
     var audioDir: String = ""
+
+    private fun checkAccessibilityServiceEnabled() {
+        val enabledServicesSetting = Settings.Secure.getString(
+            contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        )
+        if (enabledServicesSetting == null ||!enabledServicesSetting.contains(packageName)) {
+            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            startActivity(intent)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+
+        indexInput = findViewById(R.id.indexInput) // 初始化输入框
+        findViewById<View>(R.id.powerBy).setOnClickListener {
+            checkAccessibilityServiceEnabled()
+        }
+        initData()
+    }
+
+    private fun initData() {
         // 检查并复制 assets 中的文件
         initAssetsFiles()
 
         // 初始化数据库
-        db = androidx.room.Room.databaseBuilder(
+        db = Room.databaseBuilder(
             applicationContext, AppDatabase::class.java, "button-config-db"
         ).build()
 
@@ -253,6 +277,30 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         mediaPlayer?.release()
         mediaPlayer = null
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        // 这里以按下任意键为例，你可以根据需要修改 keyCode 来监听特定按键
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+            // 从输入框获取索引
+            val input = indexInput.text.toString()
+            var index = 0
+            try {
+                index = input.toInt()
+                if (index < 0 || index > 3) {
+                    index = 0
+                }
+            } catch (e: NumberFormatException) {
+                index = 0
+            }
+
+            // 检查 buttonConfigs 是否为空
+            if (buttonConfigs.isNotEmpty() && index < buttonConfigs.size) {
+                playSound(buttonConfigs[index].soundPath)
+            }
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
     }
 }
 

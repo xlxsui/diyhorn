@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">自定义声音</string>
+    <string name="accessibility_service_description">自定义声音</string>
 </resources>
