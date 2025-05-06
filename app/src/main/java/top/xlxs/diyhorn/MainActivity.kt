@@ -14,9 +14,12 @@ import android.util.Log
 import android.view.View
 import android.widget.EditText
 import android.widget.TextView
+import androidx.annotation.ColorInt
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -54,18 +57,20 @@ class MainActivity : AppCompatActivity() {
             // 打印 buttonConfigs
             Log.e(TAG, "onCreate: buttonConfigs : $buttonConfigs")
             // 设置按钮
-            ids.forEachIndexed { index, id ->
-                val textView = findViewById<TextView>(id)
-                textView.text = buttonConfigs[index].text
-                textView.setOnClickListener { playSound(buttonConfigs[index].soundPath) }
-                textView.setOnLongClickListener {
-                    showEditDialog(index, textView)
-                    true
-                }
-                applyAnimation(textView)
+            withContext(Dispatchers.Main) {
+                ids.forEachIndexed { index, id ->
+                    val textView = findViewById<TextView>(id)
+                    textView.text = buttonConfigs[index].text
+                    textView.setOnClickListener { playSound(buttonConfigs[index].soundPath) }
+                    textView.setOnLongClickListener {
+                        showEditDialog(index, textView)
+                        true
+                    }
+                    applyAnimation(textView)
 
-                val drawable = textView.background as? GradientDrawable
-                drawable?.setColor(buttonConfigs[index].color)
+                    val drawable = textView.background as? GradientDrawable
+                    drawable?.setColor(buttonConfigs[index].color)
+                }
             }
         }
     }
@@ -249,14 +254,13 @@ class MainActivity : AppCompatActivity() {
         mediaPlayer?.release()
         mediaPlayer = null
     }
-
 }
 
 // Room 数据库实体类
-@androidx.room.Entity
+@Entity
 data class ButtonConfig(
-    @androidx.room.PrimaryKey val id: Int,
+    @PrimaryKey val id: Int,
     val text: String,
     val soundPath: String,
-    @androidx.annotation.ColorInt val color: Int
+    @ColorInt val color: Int
 )
