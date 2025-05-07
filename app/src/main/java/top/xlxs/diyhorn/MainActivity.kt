@@ -29,6 +29,10 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
+import android.os.Build
 
 class MainActivity : AppCompatActivity() {
 
@@ -54,10 +58,27 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private lateinit var audioManager: AudioManager
+    private var audioFocusRequest: AudioFocusRequest? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // 初始化 AudioManager
+        audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+
+        // 初始化音频焦点请求（适用于 Android 8.0 及以上）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val audioAttributes = AudioAttributes.Builder()
+               .setUsage(AudioAttributes.USAGE_MEDIA)
+               .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+               .build()
+            audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+               .setAudioAttributes(audioAttributes)
+               .setOnAudioFocusChangeListener(audioFocusChangeListener)
+               .build()
+        }
 
         indexInput = findViewById(R.id.indexInput) // 初始化输入框
         findViewById<View>(R.id.powerBy).setOnClickListener {
@@ -203,18 +224,54 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+        // 处理音频焦点变化，这里可根据需求添加更多逻辑
+    }
+
     private fun playSound(soundPath: String) {
         mediaPlayer?.stop()
         mediaPlayer?.release()
         mediaPlayer = MediaPlayer().apply {
             try {
-                Log.i(TAG, "playSound: $soundPath")
-                setDataSource(soundPath)
-                prepare()
-                start()
+                // 请求音频焦点
+                val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    audioManager.requestAudioFocus(audioFocusRequest!!)
+                } else {
+                    @Suppress("DEPRECATION")
+                    audioManager.requestAudioFocus(
+                        audioFocusChangeListener,
+                        AudioManager.STREAM_MUSIC,
+                        AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+                    )
+                }
+
+                if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                    setDataSource(soundPath)
+                    prepare()
+                    start()
+
+                    // 设置播放完成监听器，播放结束后释放音频焦点
+                    setOnCompletionListener {
+                        releaseAudioFocus()
+                        it.release()
+                        mediaPlayer = null
+                    }
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
+                releaseAudioFocus()
             }
+        }
+    }
+
+    private fun releaseAudioFocus() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioFocusRequest?.let {
+                audioManager.abandonAudioFocusRequest(it)
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager.abandonAudioFocus(audioFocusChangeListener)
         }
     }
 
@@ -250,8 +307,14 @@ class MainActivity : AppCompatActivity() {
             uri?.let {
                 lifecycleScope.launch(Dispatchers.Default) {
                     val filePath = saveAudioFile(it)
+                    val fileName = File(filePath).name
                     buttonConfigs[requestCode] = buttonConfigs[requestCode]
-                        .copy(text = File(filePath).name, soundPath = filePath)
+                        .copy(text = fileName, soundPath = filePath)
+                    // 更新数据库
+                    db.buttonConfigDao().insertAll(buttonConfigs[requestCode])
+                    withContext(Dispatchers.Main) {
+                        findViewById<TextView>(ids[requestCode]).text = fileName
+                    }
                 }
             }
         }
@@ -281,7 +344,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         // 这里以按下任意键为例，你可以根据需要修改 keyCode 来监听特定按键
-        if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
             // 从输入框获取索引
             val input = indexInput.text.toString()
             var index = 0
