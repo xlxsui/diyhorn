@@ -127,6 +127,7 @@ class MainActivity : AppCompatActivity() {
             val soundFiles = assets.list("sounds")
             Log.i(TAG, "initAssetsFiles: ${soundFiles.contentToString()}")
             dlDir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)!!.absolutePath
+//            dlDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)!!.absolutePath
             audioDir = dlDir + File.separator + "sounds"
             // 创建 sounds 文件夹
             if (!File(audioDir).exists()) {
@@ -159,16 +160,16 @@ class MainActivity : AppCompatActivity() {
             buttonConfigs.add(
                 ButtonConfig(
                     id = 0,
-                    text = "你干嘛~哎呦",
-                    soundPath = audioDir + File.separator + "你干嘛~哎呦.mp3",
+                    text = "大小姐驾到",
+                    soundPath = audioDir + File.separator + "大小姐驾到.mp3",
                     color = Color.parseColor(defaultColors[0])
                 )
             )
             buttonConfigs.add(
                 ButtonConfig(
                     id = 1,
-                    text = "大小姐驾到",
-                    soundPath = audioDir + File.separator + "大小姐驾到.mp3",
+                    text = "你干嘛~哎呦",
+                    soundPath = audioDir + File.separator + "你干嘛~哎呦.mp3",
                     color = Color.parseColor(defaultColors[1])
                 )
             )
