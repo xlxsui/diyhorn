@@ -33,6 +33,7 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.os.Build
+import android.view.WindowManager
 
 class MainActivity : AppCompatActivity() {
 
@@ -64,6 +65,12 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        // 设置窗口保持屏幕常亮
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+//        val layoutParams = window.attributes
+//        layoutParams.screenBrightness = 0.1f  // 范围是 0.0 到 1.0，-1 表示使用系统默认亮度
+//        window.attributes = layoutParams
+
 
         // 初始化 AudioManager
         audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
@@ -126,8 +133,8 @@ class MainActivity : AppCompatActivity() {
             val assets = assets
             val soundFiles = assets.list("sounds")
             Log.i(TAG, "initAssetsFiles: ${soundFiles.contentToString()}")
-            dlDir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)!!.absolutePath
-//            dlDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)!!.absolutePath
+//            dlDir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)!!.absolutePath
+            dlDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)!!.absolutePath
             audioDir = dlDir + File.separator + "sounds"
             // 创建 sounds 文件夹
             if (!File(audioDir).exists()) {
@@ -149,6 +156,8 @@ class MainActivity : AppCompatActivity() {
                     inputStream.close()
                 }
             }
+            // 通知系统更新媒体库
+            sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(File(audioDir))))
         }
     }
 
@@ -341,6 +350,9 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         mediaPlayer?.release()
         mediaPlayer = null
+
+        // 关闭屏幕常亮
+        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
@@ -348,7 +360,7 @@ class MainActivity : AppCompatActivity() {
         if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
             // 从输入框获取索引
             val input = indexInput.text.toString()
-            var index = 0
+            var index: Int
             try {
                 index = input.toInt()
                 if (index < 0 || index > 3) {
