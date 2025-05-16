@@ -5,8 +5,13 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.media.MediaPlayer
+import android.media.audiofx.LoudnessEnhancer
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
@@ -14,6 +19,7 @@ import android.provider.Settings
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
+import android.view.WindowManager
 import android.widget.EditText
 import android.widget.TextView
 import androidx.annotation.ColorInt
@@ -29,11 +35,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
-import android.media.AudioAttributes
-import android.media.AudioFocusRequest
-import android.media.AudioManager
-import android.os.Build
-import android.view.WindowManager
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -88,9 +90,15 @@ class MainActivity : AppCompatActivity() {
         }
 
         indexInput = findViewById(R.id.indexInput) // 初始化输入框
-        findViewById<View>(R.id.powerBy).setOnClickListener {
+        val aboutJin = findViewById<TextView>(R.id.powerBy)
+        aboutJin.setOnClickListener {
             checkAccessibilityServiceEnabled()
         }
+//        aboutJin.setLayerType(View.LAYER_TYPE_SOFTWARE, null) // 需要关闭硬件加速
+//        val paint = aboutJin.paint
+//        paint.maskFilter = BlurMaskFilter(16f, BlurMaskFilter.Blur.NORMAL)
+//        aboutJin.invalidate()
+
         initData()
     }
 
@@ -259,9 +267,15 @@ class MainActivity : AppCompatActivity() {
                     setDataSource(soundPath)
                     prepare()
                     start()
+                    // 设置播放增益
+                    val loudnessEnhancer = LoudnessEnhancer(audioSessionId)
+                    loudnessEnhancer.setTargetGain(1000) // 单位是毫贝（mB），1000 = 10 dB 增益
+                    loudnessEnhancer.enabled = true
+                    Log.i(TAG, "开始播放 playSound: $soundPath")
 
                     // 设置播放完成监听器，播放结束后释放音频焦点
                     setOnCompletionListener {
+                        Log.i(TAG, "播放完成")
                         releaseAudioFocus()
                         it.release()
                         mediaPlayer = null

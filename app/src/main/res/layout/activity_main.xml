@@ -63,6 +63,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|center_horizontal"
+        android:paddingHorizontal="8dp"
         android:paddingBottom="16dp"
         android:text="Power By 围巾🧣"
         android:textColor="@android:color/black"
